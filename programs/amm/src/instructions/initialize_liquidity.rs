@@ -36,10 +36,8 @@ pub struct InitializeLiquidity<'info> {
     #[account(
         init,
         payer=liquidity_provider,
-        mint::decimals=9,
-        mint::authority=amm_pda,
-        mint::freeze_authority=amm_pda,
-        seeds=[b"lp_mint", base_coin_mint.key().as_ref(), pc_coin_mint.key().as_ref(), liquidity_provider.key().as_ref()],
+        space = Mint::LEN,
+        seeds=[b"lp_mint", base_coin_mint.key().as_ref(), pc_coin_mint.key().as_ref(), amm_pda.key().as_ref()],
         bump
     )]
     pub lp_coin_mint: Account<'info, Mint>,
@@ -56,4 +54,5 @@ pub struct InitializeLiquidity<'info> {
     pub pc_coin_mint: Account<'info, Mint>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }

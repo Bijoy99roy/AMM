@@ -1,4 +1,4 @@
-use crate::Converter;
+use crate::{AMMError, Converter};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, MintTo};
 use integer_sqrt::IntegerSquareRoot;
@@ -41,6 +41,8 @@ impl InitalizeLiquidityAccount {
         lp_coin_mint_bump: u8,
         lp_coin_mint_decimal: u8,
     ) -> Result<()> {
+        require!(base_coin_amount > 0, AMMError::InvalidBaseCoinAmount);
+        require!(pc_coin_amount > 0, AMMError::InvalidPcCoinAmount);
         self.base_coin = base_coin;
         self.pc_coin = pc_coin;
         self.liquidity_provider = liquidity_provider;
@@ -60,6 +62,11 @@ impl InitalizeLiquidityAccount {
                 .integer_sqrt(),
         )
         .unwrap();
+
+        require!(
+            total_share > 10u64.checked_pow(lp_coin_mint_decimal.into()).unwrap(),
+            AMMError::InsufficientInitialLiquidity
+        );
 
         // Calculate total lp coins to mint to liquidity provider
         // lp_token_to_mint = total_share(sqrt(x * y)) - 10^lp_token_mint_decimal
@@ -84,19 +91,14 @@ impl InitalizeLiquidityAccount {
             &freeze_authority.key(),
             Some(&mint_authority.key()),
         )?;
-        let signer_seeds: &[&[&[u8]]] = &[&[
-            b"lp_mint",
-            self.base_coin.as_ref(),
-            self.pc_coin.as_ref(),
-            amm_pda.key().as_ref(),
-            &[self.lp_coin_mint_bump],
-        ]];
+
+        let signer_seeds: &[&[&[u8]]] = &[&[b"amm_pda", &[self.bump]]];
         let cpi_account = MintTo {
             mint: lp_token_mint,
             to: liquidity_provider_lp_coin_ata,
             authority: mint_authority,
         };
-        let cpi_context = CpiContext::new(token_program, cpi_account);
+        let cpi_context = CpiContext::new_with_signer(token_program, cpi_account, signer_seeds);
         token_interface::mint_to(cpi_context, lp_token_to_mint)?;
 
         Ok(())

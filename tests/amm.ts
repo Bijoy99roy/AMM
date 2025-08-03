@@ -51,11 +51,11 @@ describe("amm", () => {
     pc_mint_to_amount: number
   ) {
     const { base_mint, pc_mint } = await createBaseAndPCMint();
-    const liquidityProviderBaseCoinAta = await getAssociatedTokenAddress(
+    const liquidityProviderBaseTokenAta = await getAssociatedTokenAddress(
       base_mint,
       liquidity_provider.publicKey
     );
-    const liquidityProviderPCCoinAta = await getAssociatedTokenAddress(
+    const liquidityProviderPCTokenAta = await getAssociatedTokenAddress(
       pc_mint,
       liquidity_provider.publicKey
     );
@@ -76,7 +76,7 @@ describe("amm", () => {
       connection,
       provider.wallet.payer,
       base_mint,
-      liquidityProviderBaseCoinAta,
+      liquidityProviderBaseTokenAta,
       provider.wallet.payer,
       base_mint_to_amount
     );
@@ -84,42 +84,42 @@ describe("amm", () => {
       connection,
       provider.wallet.payer,
       pc_mint,
-      liquidityProviderPCCoinAta,
+      liquidityProviderPCTokenAta,
       provider.wallet.payer,
       base_mint_to_amount
     );
     const base_mint_amount = new anchor.BN(base_mint_to_amount);
     const pc_mint_amount = new anchor.BN(pc_mint_to_amount);
     const { pda: amm_pda } = await getPda([Buffer.from("amm_pda")]);
-    const { pda: base_coin_vault } = await getPda([
-      Buffer.from("base_coin_vault"),
+    const { pda: base_token_vault } = await getPda([
+      Buffer.from("base_token_vault"),
       base_mint.toBuffer(),
     ]);
-    const { pda: pc_coin_vault } = await getPda([
-      Buffer.from("pc_coin_vault"),
+    const { pda: pc_token_vault } = await getPda([
+      Buffer.from("pc_token_vault"),
       pc_mint.toBuffer(),
     ]);
 
-    const { pda: lp_coin_mint } = await getPda([
+    const { pda: lp_token_mint } = await getPda([
       Buffer.from("lp_mint"),
       base_mint.toBuffer(),
       pc_mint.toBuffer(),
       amm_pda.toBuffer(),
     ]);
-    const { pda: liquidity_provider_lp_coin_ata } = await getPda([
-      Buffer.from("lp_coin_ata"),
+    const { pda: liquidity_provider_lp_token_ata } = await getPda([
+      Buffer.from("lp_token_ata"),
       liquidity_provider.publicKey.toBuffer(),
       amm_pda.toBuffer(),
     ]);
 
     return {
       amm_pda,
-      base_coin_vault,
-      pc_coin_vault,
-      lp_coin_mint,
-      liquidity_provider_lp_coin_ata,
-      liquidityProviderPCCoinAta,
-      liquidityProviderBaseCoinAta,
+      base_token_vault,
+      pc_token_vault,
+      lp_token_mint,
+      liquidity_provider_lp_token_ata,
+      liquidityProviderPCTokenAta,
+      liquidityProviderBaseTokenAta,
       base_mint,
       pc_mint,
       base_mint_amount,
@@ -136,12 +136,12 @@ describe("amm", () => {
   it("Initialize liquidity pool", async () => {
     const {
       amm_pda,
-      base_coin_vault,
-      pc_coin_vault,
-      lp_coin_mint,
-      liquidity_provider_lp_coin_ata,
-      liquidityProviderPCCoinAta,
-      liquidityProviderBaseCoinAta,
+      base_token_vault,
+      pc_token_vault,
+      lp_token_mint,
+      liquidity_provider_lp_token_ata,
+      liquidityProviderPCTokenAta,
+      liquidityProviderBaseTokenAta,
       base_mint,
       pc_mint,
       base_mint_amount,
@@ -160,14 +160,14 @@ describe("amm", () => {
         .accounts({
           liquidityProvider: liquidity_provider.publicKey,
           ammPda: amm_pda,
-          baseCoinVault: base_coin_vault,
-          pcCoinVault: pc_coin_vault,
-          lpCoinMint: lp_coin_mint,
-          liquidityProviderLpCoinAta: liquidity_provider_lp_coin_ata,
-          baseCoinMint: base_mint,
-          pcCoinMint: pc_mint,
-          liquidityProviderBaseCoinAta: liquidityProviderBaseCoinAta,
-          liquidityProviderPcCoinAta: liquidityProviderPCCoinAta,
+          baseTokenVault: base_token_vault,
+          pcTokenVault: pc_token_vault,
+          lpTokenMint: lp_token_mint,
+          liquidityProviderLpTokenAta: liquidity_provider_lp_token_ata,
+          baseTokenMint: base_mint,
+          pcTokenMint: pc_mint,
+          liquidityProviderBaseTokenAta: liquidityProviderBaseTokenAta,
+          liquidityProviderPcTokenAta: liquidityProviderPCTokenAta,
           tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
         })
         .signers([liquidity_provider])
@@ -179,12 +179,15 @@ describe("amm", () => {
 
     const baseTokenAccount = await getAccount(
       provider.connection,
-      base_coin_vault
+      base_token_vault
     );
-    const pcTokenAccount = await getAccount(provider.connection, pc_coin_vault);
-    console.log("BaseCoinVault:");
+    const pcTokenAccount = await getAccount(
+      provider.connection,
+      pc_token_vault
+    );
+    console.log("BaseTokenVault:");
     console.log(Number(baseTokenAccount.amount));
-    console.log("PcCoinVault:");
+    console.log("PcTokenVault:");
     console.log(Number(pcTokenAccount.amount));
   });
 });

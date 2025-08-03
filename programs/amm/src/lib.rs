@@ -1,9 +1,11 @@
 pub mod error;
+pub mod events;
 pub mod instructions;
 pub mod math;
 pub mod state;
 use anchor_lang::prelude::*;
 pub use error::*;
+pub use events::*;
 pub use instructions::*;
 pub use math::*;
 pub use state::*;

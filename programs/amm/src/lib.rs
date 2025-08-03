@@ -15,13 +15,12 @@ pub mod amm {
 
     pub fn initialize_liquidity(
         ctx: Context<InitializeLiquidity>,
+        lp_coin_mint_decimal: u8,
         base_coin: Pubkey,
         pc_coin: Pubkey,
         base_coin_amount: u64,
         pc_coin_amount: u64,
-        lp_coin_mint_decimal: u8,
     ) -> Result<()> {
-        let liquidity_provider = &ctx.accounts.liquidity_provider;
         let accounts = &ctx.accounts;
         let (_, bump) = Pubkey::find_program_address(&[b"amm_pda"], ctx.program_id);
         let (_, base_coin_vault_bump) = Pubkey::find_program_address(
@@ -41,26 +40,36 @@ pub mod amm {
             ],
             ctx.program_id,
         );
-
+        let liquidity_provider = &accounts.liquidity_provider.to_account_info();
         let token_program = accounts.token_program.to_account_info();
         let lp_coin_mint = accounts.lp_coin_mint.to_account_info();
         let rent = accounts.rent.to_account_info();
         let freeze_authority = accounts.amm_pda.to_account_info();
         let mint_authority = accounts.amm_pda.to_account_info();
-        let amm_pda = accounts.amm_pda.to_account_info();
         let liquidity_provider_lp_coin_ata =
             accounts.liquidity_provider_lp_coin_ata.to_account_info();
+
+        let base_coin_vault = accounts.base_coin_vault.to_account_info();
+        let pc_coin_vault = accounts.pc_coin_vault.to_account_info();
+
+        let liquidity_provider_base_token_ata =
+            accounts.liquidity_provider_base_coin_ata.to_account_info();
+        let liquidity_provider_pc_token_ata =
+            accounts.liquidity_provider_pc_coin_ata.to_account_info();
         ctx.accounts.amm_pda.initialize(
             liquidity_provider_lp_coin_ata,
             token_program,
             lp_coin_mint.clone(),
-            amm_pda,
             rent,
             freeze_authority,
             mint_authority,
+            base_coin_vault,
+            pc_coin_vault,
+            liquidity_provider_base_token_ata,
+            liquidity_provider_pc_token_ata,
             base_coin,
             pc_coin,
-            liquidity_provider.key().clone(),
+            liquidity_provider,
             base_coin_amount,
             pc_coin_amount,
             bump,

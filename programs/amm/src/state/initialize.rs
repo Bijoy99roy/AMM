@@ -1,6 +1,9 @@
 use crate::{AMMError, Converter};
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{self, MintTo};
+use anchor_spl::{
+    token::{self, Transfer},
+    token_interface::{self, MintTo},
+};
 use integer_sqrt::IntegerSquareRoot;
 
 #[account]
@@ -19,20 +22,23 @@ pub struct InitalizeLiquidityAccount {
 }
 
 impl InitalizeLiquidityAccount {
-    pub const MAX_SIZE: usize = 32 + 32 + 32 + 8 + 8 + 8 + 8 + 1 + 1 + 1;
+    pub const MAX_SIZE: usize = 32 + 32 + 32 + 8 + 8 + 8 + 8 + 1 + 1 + 1 + 1;
 
     pub fn initialize<'info>(
         &mut self,
         liquidity_provider_lp_coin_ata: AccountInfo<'info>,
         token_program: AccountInfo<'info>,
         lp_token_mint: AccountInfo<'info>,
-        amm_pda: AccountInfo<'info>,
         rent: AccountInfo<'info>,
         freeze_authority: AccountInfo<'info>,
         mint_authority: AccountInfo<'info>,
+        base_coin_vault: AccountInfo<'info>,
+        pc_coin_vault: AccountInfo<'info>,
+        liquidity_provider_base_coin_ata: AccountInfo<'info>,
+        liquidity_provider_pc_coin_ata: AccountInfo<'info>,
         base_coin: Pubkey,
         pc_coin: Pubkey,
-        liquidity_provider: Pubkey,
+        liquidity_provider: &AccountInfo<'info>,
         base_coin_amount: u64,
         pc_coin_amount: u64,
         bump: u8,
@@ -45,7 +51,7 @@ impl InitalizeLiquidityAccount {
         require!(pc_coin_amount > 0, AMMError::InvalidPcCoinAmount);
         self.base_coin = base_coin;
         self.pc_coin = pc_coin;
-        self.liquidity_provider = liquidity_provider;
+        self.liquidity_provider = liquidity_provider.key();
         self.base_coin_amount = base_coin_amount;
         self.pc_coin_amount = pc_coin_amount;
 
@@ -79,18 +85,18 @@ impl InitalizeLiquidityAccount {
         let lp_token_to_mint = total_share
             .checked_sub(10u64.checked_pow(lp_coin_mint_decimal.into()).unwrap())
             .unwrap();
-        anchor_spl::token::initialize_mint(
-            CpiContext::new(
-                token_program.clone(),
-                anchor_spl::token::InitializeMint {
-                    mint: lp_token_mint.clone(),
-                    rent: rent,
-                },
-            ),
-            lp_coin_mint_decimal,
-            &freeze_authority.key(),
-            Some(&mint_authority.key()),
-        )?;
+        // anchor_spl::token::initialize_mint(
+        //     CpiContext::new(
+        //         token_program.clone(),
+        //         anchor_spl::token::InitializeMint {
+        //             mint: lp_token_mint.clone(),
+        //             rent: rent,
+        //         },
+        //     ),
+        //     lp_coin_mint_decimal,
+        //     &freeze_authority.key(),
+        //     Some(&mint_authority.key()),
+        // )?;
 
         let signer_seeds: &[&[&[u8]]] = &[&[b"amm_pda", &[self.bump]]];
         let cpi_account = MintTo {
@@ -98,9 +104,33 @@ impl InitalizeLiquidityAccount {
             to: liquidity_provider_lp_coin_ata,
             authority: mint_authority,
         };
-        let cpi_context = CpiContext::new_with_signer(token_program, cpi_account, signer_seeds);
+        let cpi_context =
+            CpiContext::new_with_signer(token_program.clone(), cpi_account, signer_seeds);
         token_interface::mint_to(cpi_context, lp_token_to_mint)?;
 
+        // Transfer base coin to on-chain token vault
+        let liquidity_provider_info = liquidity_provider.clone();
+        let cpi_ctx = CpiContext::new(
+            token_program.clone(),
+            Transfer {
+                from: liquidity_provider_base_coin_ata,
+                to: base_coin_vault,
+                authority: liquidity_provider_info.clone(),
+            },
+        );
+        token::transfer(cpi_ctx, base_coin_amount)?;
+
+        // Transfer cp coin to on-chain token vault
+
+        let cpi_ctx = CpiContext::new(
+            token_program,
+            Transfer {
+                from: liquidity_provider_pc_coin_ata,
+                to: pc_coin_vault,
+                authority: liquidity_provider_info,
+            },
+        );
+        token::transfer(cpi_ctx, pc_coin_amount)?;
         Ok(())
     }
 }

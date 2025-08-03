@@ -3,11 +3,12 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[derive(Accounts)]
+#[instruction(lp_coin_mint_decimal: u8)]
 pub struct InitializeLiquidity<'info> {
     #[account(mut)]
     pub liquidity_provider: Signer<'info>,
     #[account(
-    init,
+    init_if_needed,
     payer=liquidity_provider,
     space= 8 + InitalizeLiquidityAccount::MAX_SIZE,
     seeds=[b"amm_pda"],
@@ -36,9 +37,11 @@ pub struct InitializeLiquidity<'info> {
     #[account(
         init,
         payer=liquidity_provider,
-        space = Mint::LEN,
+        mint::decimals = lp_coin_mint_decimal,
+        mint::authority= amm_pda,
+        mint::freeze_authority = amm_pda,
         seeds=[b"lp_mint", base_coin_mint.key().as_ref(), pc_coin_mint.key().as_ref(), amm_pda.key().as_ref()],
-        bump
+        bump,
     )]
     pub lp_coin_mint: Account<'info, Mint>,
     #[account(
@@ -50,6 +53,10 @@ pub struct InitializeLiquidity<'info> {
         payer = liquidity_provider
     )]
     pub liquidity_provider_lp_coin_ata: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub liquidity_provider_base_coin_ata: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub liquidity_provider_pc_coin_ata: Account<'info, TokenAccount>,
     pub base_coin_mint: Account<'info, Mint>,
     pub pc_coin_mint: Account<'info, Mint>,
     pub token_program: Program<'info, Token>,

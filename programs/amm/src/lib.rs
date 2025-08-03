@@ -21,64 +21,14 @@ pub mod amm {
         base_coin_amount: u64,
         pc_coin_amount: u64,
     ) -> Result<()> {
-        let accounts = &ctx.accounts;
-        let (_, bump) = Pubkey::find_program_address(&[b"amm_pda"], ctx.program_id);
-        let (_, base_coin_vault_bump) = Pubkey::find_program_address(
-            &[b"base_coin_vault", accounts.base_coin_mint.key().as_ref()],
-            ctx.program_id,
-        );
-        let (_, pc_coin_vault_bump) = Pubkey::find_program_address(
-            &[b"pc_coin_vault", accounts.pc_coin_mint.key().as_ref()],
-            ctx.program_id,
-        );
-        let (_, lp_coin_mint_bump) = Pubkey::find_program_address(
-            &[
-                b"lp_mint",
-                accounts.base_coin_mint.key().as_ref(),
-                accounts.pc_coin_mint.key().as_ref(),
-                accounts.amm_pda.key().as_ref(),
-            ],
-            ctx.program_id,
-        );
-        let liquidity_provider = &accounts.liquidity_provider.to_account_info();
-        let token_program = accounts.token_program.to_account_info();
-        let lp_coin_mint = accounts.lp_coin_mint.to_account_info();
-        let rent = accounts.rent.to_account_info();
-        let freeze_authority = accounts.amm_pda.to_account_info();
-        let mint_authority = accounts.amm_pda.to_account_info();
-        let liquidity_provider_lp_coin_ata =
-            accounts.liquidity_provider_lp_coin_ata.to_account_info();
-
-        let base_coin_vault = accounts.base_coin_vault.to_account_info();
-        let pc_coin_vault = accounts.pc_coin_vault.to_account_info();
-
-        let liquidity_provider_base_token_ata =
-            accounts.liquidity_provider_base_coin_ata.to_account_info();
-        let liquidity_provider_pc_token_ata =
-            accounts.liquidity_provider_pc_coin_ata.to_account_info();
-        ctx.accounts.amm_pda.initialize(
-            liquidity_provider_lp_coin_ata,
-            token_program,
-            lp_coin_mint.clone(),
-            rent,
-            freeze_authority,
-            mint_authority,
-            base_coin_vault,
-            pc_coin_vault,
-            liquidity_provider_base_token_ata,
-            liquidity_provider_pc_token_ata,
+        _initialize_liquidity_pool(
+            ctx,
+            lp_coin_mint_decimal,
             base_coin,
             pc_coin,
-            liquidity_provider,
             base_coin_amount,
             pc_coin_amount,
-            bump,
-            base_coin_vault_bump,
-            pc_coin_vault_bump,
-            lp_coin_mint_bump,
-            lp_coin_mint_decimal,
-        )?;
-        Ok(())
+        )
     }
 }
 

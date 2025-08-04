@@ -8,7 +8,7 @@ use anchor_spl::{
 };
 use integer_sqrt::IntegerSquareRoot;
 #[derive(Accounts)]
-#[instruction(lp_token_mint_decimal: u8)]
+#[instruction(lp_token_mint_decimal: u8, amm_pda_index: u64)]
 pub struct InitializeLiquidity<'info> {
     #[account(mut)]
     pub liquidity_provider: Signer<'info>,
@@ -16,7 +16,7 @@ pub struct InitializeLiquidity<'info> {
     init_if_needed,
     payer=liquidity_provider,
     space= 8 + InitalizeLiquidityAccount::MAX_SIZE,
-    seeds=[b"amm_pda"],
+    seeds=[b"amm_pda", &amm_pda_index.to_le_bytes()[..]],
     bump
     )]
     pub amm_pda: Account<'info, InitalizeLiquidityAccount>,
@@ -72,6 +72,7 @@ pub struct InitializeLiquidity<'info> {
 pub fn _initialize_liquidity_pool(
     ctx: Context<InitializeLiquidity>,
     lp_token_mint_decimal: u8,
+    amm_pda_index: u64,
     base_token: Pubkey,
     pc_token: Pubkey,
     base_token_amount: u64,
@@ -88,7 +89,10 @@ pub fn _initialize_liquidity_pool(
         pc_token == accounts.pc_token_mint.key(),
         AMMError::InvalidMint
     );
-    let (_, bump) = Pubkey::find_program_address(&[b"amm_pda"], ctx.program_id);
+    let (_, bump) = Pubkey::find_program_address(
+        &[b"amm_pda", &amm_pda_index.to_le_bytes()[..]],
+        ctx.program_id,
+    );
     let (_, base_token_vault_bump) = Pubkey::find_program_address(
         &[b"base_token_vault", accounts.base_token_mint.key().as_ref()],
         ctx.program_id,
@@ -183,7 +187,7 @@ pub fn _initialize_liquidity_pool(
     //     Some(&mint_authority.key()),
     // )?;
 
-    let signer_seeds: &[&[&[u8]]] = &[&[b"amm_pda", &[bump]]];
+    let signer_seeds: &[&[&[u8]]] = &[&[b"amm_pda", &amm_pda_index.to_le_bytes()[..], &[bump]]];
     let cpi_account = MintTo {
         mint: lp_token_mint,
         to: liquidity_provider_lp_token_ata,

@@ -18,6 +18,7 @@ pub mod amm {
     pub fn initialize_liquidity(
         ctx: Context<InitializeLiquidity>,
         lp_coin_mint_decimal: u8,
+        amm_pda_index: u64,
         base_coin: Pubkey,
         pc_coin: Pubkey,
         base_coin_amount: u64,
@@ -26,6 +27,7 @@ pub mod amm {
         _initialize_liquidity_pool(
             ctx,
             lp_coin_mint_decimal,
+            amm_pda_index,
             base_coin,
             pc_coin,
             base_coin_amount,

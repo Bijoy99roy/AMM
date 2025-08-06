@@ -34,6 +34,15 @@ pub mod amm {
             pc_coin_amount,
         )
     }
+
+    pub fn swap_base_in(
+        ctx: Context<SwapBaseIn>,
+        amm_pda_index: u64,
+        amount_in: u64,
+        min_amount_out: u64,
+    ) -> Result<()> {
+        _swap_base_in(ctx, amount_in, min_amount_out)
+    }
 }
 
 #[derive(Accounts)]

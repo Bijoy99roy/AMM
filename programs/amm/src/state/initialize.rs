@@ -2,6 +2,12 @@ use anchor_lang::prelude::*;
 
 use crate::AMMError;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct Fees {
+    pub swap_fee_numerator: u64,
+    pub swap_fee_denominator: u64,
+}
+
 #[account]
 pub struct InitalizeLiquidityAccount {
     pub base_token: Pubkey,
@@ -10,6 +16,7 @@ pub struct InitalizeLiquidityAccount {
     pub base_token_amount: u64,
     pub pc_token_amount: u64,
     pub open_time: i64,
+    pub fees: Fees,
     pub bump: u8,
     pub base_token_vault_bump: u8,
     pub pc_token_vault_bump: u8,
@@ -17,7 +24,7 @@ pub struct InitalizeLiquidityAccount {
 }
 
 impl InitalizeLiquidityAccount {
-    pub const MAX_SIZE: usize = 32 + 32 + 32 + 8 + 8 + 8 + 1 + 1 + 1 + 1;
+    pub const MAX_SIZE: usize = 32 + 32 + 32 + 8 + 8 + 8 + 16 + 1 + 1 + 1 + 1;
 
     pub fn initialize<'info>(
         &mut self,
@@ -44,6 +51,8 @@ impl InitalizeLiquidityAccount {
         self.pc_token_vault_bump = pc_token_vault_bump;
         self.lp_token_mint_bump = lp_token_mint_bump;
         self.open_time = Clock::get()?.unix_timestamp;
+        self.fees.swap_fee_numerator = 25;
+        self.fees.swap_fee_denominator = 10000;
         Ok(())
     }
 }

@@ -18,4 +18,12 @@ pub enum AMMError {
     InvalidMint,
     #[msg("Token account hasn't been initialized on invalid")]
     InvalidOrUninitializedAta,
+    #[msg("The amount is invalid")]
+    InvalidAmount,
+    #[msg("Not a spl token program")]
+    InvalidSplTokenProgram,
+    #[msg("User input token is invalid")]
+    InvalidUserToken,
+    #[msg("Mathematical overflow during operation")]
+    MathOverflow,
 }

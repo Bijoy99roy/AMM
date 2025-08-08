@@ -150,14 +150,17 @@ pub fn _initialize_liquidity_pool(
         pc_token_vault_bump,
         lp_token_mint_bump,
     )?;
-    let total_share = Converter::to_u64(
-        Converter::to_u128(base_token_amount)
-            .unwrap()
-            .checked_mul(Converter::to_u128(pc_token_amount).unwrap())
-            .unwrap()
-            .integer_sqrt(),
-    )?;
 
+    let base_u128 = Converter::to_u128(base_token_amount)?;
+    let pc_u128 = Converter::to_u128(pc_token_amount)?;
+
+    let product = base_u128
+        .checked_mul(pc_u128)
+        .ok_or(AMMError::MathOverflow)?;
+
+    let sqrt = product.integer_sqrt();
+
+    let total_share = Converter::to_u64(sqrt)?;
     require!(
         total_share > 10u64.checked_pow(lp_token_mint_decimal.into()).unwrap(),
         AMMError::InsufficientInitialLiquidity

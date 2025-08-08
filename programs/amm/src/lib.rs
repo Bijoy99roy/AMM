@@ -1,14 +1,18 @@
+pub mod constants;
 pub mod error;
 pub mod events;
 pub mod instructions;
 pub mod math;
 pub mod state;
+pub mod utils;
 use anchor_lang::prelude::*;
+pub use constants::*;
 pub use error::*;
 pub use events::*;
 pub use instructions::*;
 pub use math::*;
 pub use state::*;
+pub use utils::*;
 declare_id!("Hr9FAeTLTe8ESL831KZjMAreV21Gno4Pv8HTwHRjA8PK");
 
 #[program]
@@ -41,7 +45,7 @@ pub mod amm {
         amount_in: u64,
         min_amount_out: u64,
     ) -> Result<()> {
-        _swap_base_in(ctx, amount_in, min_amount_out)
+        _swap_base_in(ctx, amm_pda_index, amount_in, min_amount_out)
     }
 }
 

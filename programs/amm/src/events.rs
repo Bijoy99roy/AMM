@@ -8,3 +8,12 @@ pub struct InitializeLiquidityPoolEvent {
     pub base_token_amount: u64,
     pub pc_token_amount: u64,
 }
+
+#[event]
+pub struct SwapEvent {
+    pub amount_in: u64,
+    pub direction: u8,
+    pub user_source: Pubkey,
+    pub user_destination: Pubkey,
+    pub swap_amount_out: u64,
+}

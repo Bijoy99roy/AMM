@@ -28,8 +28,11 @@ describe("amm", () => {
   const provider = anchor.getProvider();
 
   const liquidityProvider = anchor.web3.Keypair.generate();
+  const user = anchor.web3.Keypair.generate();
   const connection = provider.connection;
   const lpMintDecimal: number = 9;
+
+  let ammVariables = {};
   async function getPda(seeds) {
     const [pda, bump] = anchor.web3.PublicKey.findProgramAddressSync(
       seeds,
@@ -60,6 +63,7 @@ describe("amm", () => {
     baseMintToAmount: number,
     pcMintToAmount: number,
     ammPdaIndex: anchor.BN,
+    userKeypair: anchor.web3.Keypair,
     isNativeBase: boolean = false,
     isNativePc: boolean = false
   ) {
@@ -75,13 +79,13 @@ describe("amm", () => {
       ({ baseMint, pcMint } = await createBaseAndPCMint());
     }
 
-    const liquidityProviderBaseTokenAta = await getAssociatedTokenAddress(
+    const userBaseTokenAta = await getAssociatedTokenAddress(
       baseMint,
-      liquidityProvider.publicKey
+      userKeypair.publicKey
     );
-    const liquidityProviderPCTokenAta = await getAssociatedTokenAddress(
+    const userPCTokenAta = await getAssociatedTokenAddress(
       pcMint,
-      liquidityProvider.publicKey
+      userKeypair.publicKey
     );
 
     if (!isNativeBase) {
@@ -89,13 +93,13 @@ describe("amm", () => {
         connection,
         provider.wallet.payer,
         baseMint,
-        liquidityProvider.publicKey
+        userKeypair.publicKey
       );
       await mintTo(
         connection,
         provider.wallet.payer,
         baseMint,
-        liquidityProviderBaseTokenAta,
+        userBaseTokenAta,
         provider.wallet.payer,
         baseMintToAmount
       );
@@ -105,15 +109,15 @@ describe("amm", () => {
         connection,
         provider.wallet.payer,
         pcMint,
-        liquidityProvider.publicKey
+        userKeypair.publicKey
       );
       await mintTo(
         connection,
         provider.wallet.payer,
         pcMint,
-        liquidityProviderPCTokenAta,
+        userPCTokenAta,
         provider.wallet.payer,
-        baseMintToAmount
+        pcMintToAmount
       );
     }
 
@@ -140,22 +144,77 @@ describe("amm", () => {
     ]);
     const { pda: liquidityProviderLpTokenAta } = await getPda([
       Buffer.from("lp_token_ata"),
-      liquidityProvider.publicKey.toBuffer(),
+      userKeypair.publicKey.toBuffer(),
       ammPda.toBuffer(),
     ]);
-
-    return {
+    ammVariables[ammPdaIndex.toNumber()] = {
       ammPda,
       baseTokenVault,
       pcTokenVault,
       lpTokenMint,
       liquidityProviderLpTokenAta,
-      liquidityProviderPCTokenAta,
-      liquidityProviderBaseTokenAta,
+      userPCTokenAta,
+      userBaseTokenAta,
       baseMint,
       pcMint,
       baseMintAmount,
       pcMintAmount,
+    };
+    return ammVariables[ammPdaIndex.toNumber()];
+  }
+  async function prepareSwap(
+    baseMintToAmount: number,
+    pcMintToAmount: number,
+    ammPdaIndex: number,
+    userKeypair: anchor.web3.Keypair,
+    isNativeBase: boolean = false,
+    isNativePc: boolean = false
+  ) {
+    const { baseMint, pcMint } = ammVariables[ammPdaIndex];
+    const userBaseTokenAta = await getAssociatedTokenAddress(
+      baseMint,
+      userKeypair.publicKey
+    );
+    const userPCTokenAta = await getAssociatedTokenAddress(
+      pcMint,
+      userKeypair.publicKey
+    );
+
+    if (!isNativeBase) {
+      await createAssociatedTokenAccount(
+        connection,
+        provider.wallet.payer,
+        baseMint,
+        userKeypair.publicKey
+      );
+      await mintTo(
+        connection,
+        provider.wallet.payer,
+        baseMint,
+        userBaseTokenAta,
+        provider.wallet.payer,
+        baseMintToAmount
+      );
+    }
+    if (!isNativePc) {
+      await createAssociatedTokenAccount(
+        connection,
+        provider.wallet.payer,
+        pcMint,
+        userKeypair.publicKey
+      );
+      await mintTo(
+        connection,
+        provider.wallet.payer,
+        pcMint,
+        userPCTokenAta,
+        provider.wallet.payer,
+        pcMintToAmount
+      );
+    }
+    return {
+      userBaseTokenAta,
+      userPCTokenAta,
     };
   }
   async function wrapSol(
@@ -191,6 +250,11 @@ describe("amm", () => {
       anchor.web3.LAMPORTS_PER_SOL * 100
     );
     await provider.connection.confirmTransaction(airdropSig);
+    const airdropSigUser = await provider.connection.requestAirdrop(
+      user.publicKey,
+      anchor.web3.LAMPORTS_PER_SOL * 100
+    );
+    await provider.connection.confirmTransaction(airdropSigUser);
   });
   it("Initialize liquidity pool", async () => {
     const ammPdaIndex = new anchor.BN(1);
@@ -200,8 +264,8 @@ describe("amm", () => {
       pcTokenVault,
       lpTokenMint,
       liquidityProviderLpTokenAta,
-      liquidityProviderPCTokenAta,
-      liquidityProviderBaseTokenAta,
+      userPCTokenAta: liquidityProviderPCTokenAta,
+      userBaseTokenAta: liquidityProviderBaseTokenAta,
       baseMint,
       pcMint,
       baseMintAmount,
@@ -209,7 +273,8 @@ describe("amm", () => {
     } = await prepareInitalizeLiquidityPool(
       2_000_000_000,
       1_000_000_000,
-      ammPdaIndex
+      ammPdaIndex,
+      liquidityProvider
     );
 
     const lpTokenMintAmount = 414213562;
@@ -328,8 +393,8 @@ describe("amm", () => {
       pcTokenVault,
       lpTokenMint,
       liquidityProviderLpTokenAta,
-      liquidityProviderPCTokenAta,
-      liquidityProviderBaseTokenAta,
+      userPCTokenAta: liquidityProviderPCTokenAta,
+      userBaseTokenAta: liquidityProviderBaseTokenAta,
       baseMint,
       pcMint,
       baseMintAmount,
@@ -337,9 +402,11 @@ describe("amm", () => {
     } = await prepareInitalizeLiquidityPool(
       2_000_000_000,
       1_000_000_000,
-      new anchor.BN(2),
+      ammPdaIndex,
+      liquidityProvider,
       true
     );
+
     await wrapSol(liquidityProvider, liquidityProviderBaseTokenAta);
     const lpTokenMintAmount = 414213562;
     let txSig;
@@ -442,5 +509,53 @@ describe("amm", () => {
       }
     }
     assert.equal(logEmitted, true, "Should emit event");
+  });
+
+  it("Swap Coin2Pc", async () => {
+    const ammPdaIndex = new anchor.BN(2);
+    const {
+      ammPda,
+      baseTokenVault,
+      pcTokenVault,
+
+      baseMint,
+      pcMint,
+    } = ammVariables[ammPdaIndex.toNumber()];
+    const { userBaseTokenAta, userPCTokenAta } = await prepareSwap(
+      2_000_000_000,
+      1_000_000_000,
+      ammPdaIndex.toNumber(),
+      user,
+      true
+    );
+    await wrapSol(user, userBaseTokenAta);
+    const amountIn = new anchor.BN(2_000_000_00);
+    await program.methods
+      .swapBaseIn(ammPdaIndex, amountIn, amountIn)
+      .accounts({
+        user: user.publicKey,
+        ammPda: ammPda,
+        baseTokenVault: baseTokenVault,
+        pcTokenVault: pcTokenVault,
+        userSourceAta: userBaseTokenAta,
+        userDestinationAta: userPCTokenAta,
+        baseTokenMint: baseMint,
+        pcTokenMint: pcMint,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+      })
+      .signers([user])
+      .rpc();
+
+    const userbaseTokenAccount = await getAccount(
+      provider.connection,
+      userBaseTokenAta
+    );
+    const userpcTokenAccount = await getAccount(
+      provider.connection,
+      userPCTokenAta
+    );
+
+    console.log("Base:  ", userbaseTokenAccount.amount.toString());
+    console.log("PC:  ", userpcTokenAccount.amount.toString());
   });
 });

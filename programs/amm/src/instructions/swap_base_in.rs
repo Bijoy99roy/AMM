@@ -51,6 +51,7 @@ pub fn _swap_base_in(
     amount_in: u64,
     min_amount_out: u64,
 ) -> Result<()> {
+    // TODO: Figure out how to implement slippage then use min_amount_out to validate
     require!(amount_in > 0, AMMError::InvalidAmount);
     require!(min_amount_out > 0, AMMError::InvalidAmount);
     let accounts = ctx.accounts;
@@ -58,7 +59,7 @@ pub fn _swap_base_in(
     let base_token_vault = &accounts.base_token_vault;
     let pc_token_vault = &accounts.pc_token_vault;
     let user_source_account_info = accounts.user_source_ata.to_account_info();
-    let user_destination_account_info = accounts.user_source_ata.to_account_info();
+    let user_destination_account_info = accounts.user_destination_ata.to_account_info();
     let user_source =
         ProcessTokenInstructions::unpack_token_accounts(&user_source_account_info, &spl_token::ID)?;
     let user_destination = ProcessTokenInstructions::unpack_token_accounts(
@@ -132,8 +133,8 @@ pub fn _swap_base_in(
         token_program,
         Transfer {
             from: pc_token_vault_account_info,
-            to: user_source_account_info,
-            authority: user_account_info,
+            to: user_destination_account_info,
+            authority: amm_pda.to_account_info(),
         },
         signer_seeds,
     );

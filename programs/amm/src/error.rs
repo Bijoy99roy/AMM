@@ -26,4 +26,6 @@ pub enum AMMError {
     InvalidUserToken,
     #[msg("Mathematical overflow during operation")]
     MathOverflow,
+    #[msg("Invalid Input")]
+    InvalidInput,
 }

@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use crate::{error::AMMError, SwapDirection};
 
 pub struct Converter {}
@@ -45,5 +47,75 @@ impl AMMCalculator {
             }
         }
         amount_out
+    }
+}
+
+pub struct TokenCalculator {
+    pub base_token: u64,
+    pub pc_token: u64,
+}
+
+impl TokenCalculator {
+    pub fn exchange_base_to_pc(&self, base_token: u64) -> u64 {
+        // To maintain ratio of tokens before and after adding liquidity
+        // x/y = x + dx/y + dy
+        // x(y + dy) = y(x + dx)
+        // x * dy = y  * dx
+        // dy = y * dx / x
+        Converter::to_u64(
+            Converter::to_u128(base_token)
+                .unwrap()
+                .checked_mul(self.pc_token.into())
+                .unwrap()
+                .checked_div(self.base_token.into())
+                .unwrap(),
+        )
+        .unwrap()
+    }
+
+    pub fn exchange_pc_to_base(&self, pc_token: u64) -> u64 {
+        // To maintain ratio of tokens before and after adding liquidity
+        // x/y = x + dx/y + dy
+        // x(y + dy) = y(x + dx)
+        // x * dy = y  * dx
+        // dx = x * dy / y
+        Converter::to_u64(
+            Converter::to_u128(pc_token)
+                .unwrap()
+                .checked_mul(self.base_token.into())
+                .unwrap()
+                .checked_div(self.pc_token.into())
+                .unwrap(),
+        )
+        .unwrap()
+    }
+
+    pub fn exchange_token_to_pool(
+        &self,
+        pool_total_amount: u64,
+        base_token: u64,
+        pc_token: u64,
+    ) -> u64 {
+        let base_token_pool_share = Converter::to_u64(
+            Converter::to_u128(base_token)
+                .unwrap()
+                .checked_mul(pool_total_amount.into())
+                .unwrap()
+                .checked_div(self.base_token.into())
+                .unwrap(),
+        )
+        .unwrap();
+
+        let pc_token_pool_share = Converter::to_u64(
+            Converter::to_u128(pc_token)
+                .unwrap()
+                .checked_mul(pool_total_amount.into())
+                .unwrap()
+                .checked_div(self.pc_token.into())
+                .unwrap(),
+        )
+        .unwrap();
+
+        min(base_token_pool_share, pc_token_pool_share)
     }
 }

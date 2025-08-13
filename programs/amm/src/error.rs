@@ -28,4 +28,6 @@ pub enum AMMError {
     MathOverflow,
     #[msg("Invalid Input")]
     InvalidInput,
+    #[msg("Not allow zero LP")]
+    NotAllowZeroLP,
 }

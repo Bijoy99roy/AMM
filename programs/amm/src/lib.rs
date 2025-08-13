@@ -53,20 +53,18 @@ pub mod amm {
         amm_pda_index: u64,
         base_coin: Pubkey,
         pc_coin: Pubkey,
-        base_coin_amount: u64,
-        pc_coin_amount: u64,
         max_base_coin_amount: u64,
         max_pc_coin_amount: u64,
+        base_side: u8,
     ) -> Result<()> {
         _deposit(
             ctx,
             amm_pda_index,
             base_coin,
             pc_coin,
-            base_coin_amount,
-            pc_coin_amount,
             max_base_coin_amount,
             max_pc_coin_amount,
+            base_side,
         )
     }
 }

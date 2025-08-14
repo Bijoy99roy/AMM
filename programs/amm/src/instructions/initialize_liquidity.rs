@@ -83,11 +83,11 @@ pub fn _initialize_liquidity_pool(
     let accounts = &ctx.accounts;
     require!(
         base_token == accounts.base_token_mint.key(),
-        AMMError::InvalidMint
+        AMMError::MintMismatch
     );
     require!(
         pc_token == accounts.pc_token_mint.key(),
-        AMMError::InvalidMint
+        AMMError::MintMismatch
     );
     let (_, bump) = Pubkey::find_program_address(
         &[b"amm_pda", &amm_pda_index.to_le_bytes()[..]],

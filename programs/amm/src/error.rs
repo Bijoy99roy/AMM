@@ -30,4 +30,8 @@ pub enum AMMError {
     InvalidInput,
     #[msg("Not allow zero LP")]
     NotAllowZeroLP,
+    #[msg("Mint mismatch")]
+    MintMismatch,
+    #[msg("Insufficient funds")]
+    InsufficientFund,
 }

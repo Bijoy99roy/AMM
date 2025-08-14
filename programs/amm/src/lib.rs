@@ -50,6 +50,7 @@ pub mod amm {
 
     pub fn deposit(
         ctx: Context<Deposit>,
+        _lp_token_mint_decimal: u8,
         amm_pda_index: u64,
         base_coin: Pubkey,
         pc_coin: Pubkey,

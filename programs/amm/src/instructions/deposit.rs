@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Accounts)]
-#[instruction(lp_token_mint_decimal: u8, amm_pda_index: u64)]
+#[instruction(_lp_token_mint_decimal: u8, amm_pda_index: u64)]
 pub struct Deposit<'info> {
     #[account(mut)]
     user: Signer<'info>,
@@ -38,7 +38,7 @@ pub struct Deposit<'info> {
     pub pc_token_vault: Account<'info, TokenAccount>,
     #[account(
         mut,
-        mint::decimals = lp_token_mint_decimal,
+        mint::decimals = _lp_token_mint_decimal,
         mint::authority= amm_pda,
         mint::freeze_authority = amm_pda,
         seeds=[b"lp_mint", base_token_mint.key().as_ref(), pc_token_mint.key().as_ref(), amm_pda.key().as_ref()],
@@ -75,6 +75,10 @@ pub fn _deposit(
 ) -> Result<()> {
     let accounts = &ctx.accounts;
 
+    if max_pc_coin_amount == 0 || max_base_coin_amount == 0 {
+        return Err(AMMError::InvalidAmount.into());
+    }
+
     let base_token_vault_account_info = accounts.base_token_vault.to_account_info();
     let pc_token_vault_account_info = accounts.pc_token_vault.to_account_info();
     let amm_pda = &accounts.amm_pda;
@@ -93,6 +97,16 @@ pub fn _deposit(
 
     let total_base_token = accounts.base_token_vault.amount;
     let total_pc_token = accounts.pc_token_vault.amount;
+
+    require!(
+        base_token.to_string() == amm_pda.base_token.to_string(),
+        AMMError::MintMismatch
+    );
+
+    require!(
+        pc_token.to_string() == amm_pda.pc_token.to_string(),
+        AMMError::MintMismatch
+    );
 
     if lp_mint.supply == 0 {
         return Err(AMMError::NotAllowZeroLP.into());
@@ -124,6 +138,16 @@ pub fn _deposit(
             deduct_base_amount,
         );
     }
+
+    require!(
+        deduct_base_amount < accounts.liquidity_provider_base_token_ata.amount,
+        AMMError::InsufficientFund
+    );
+
+    require!(
+        deduct_pc_amount < accounts.liquidity_provider_pc_token_ata.amount,
+        AMMError::InsufficientFund
+    );
 
     let signer_seeds: &[&[&[u8]]] = &[&[
         b"amm_pda",

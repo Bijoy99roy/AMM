@@ -29,6 +29,7 @@ describe("amm", () => {
 
   const liquidityProvider = anchor.web3.Keypair.generate();
   const user = anchor.web3.Keypair.generate();
+  const depositor = anchor.web3.Keypair.generate();
   const connection = provider.connection;
   const lpMintDecimal: number = 9;
 
@@ -65,17 +66,19 @@ describe("amm", () => {
     ammPdaIndex: anchor.BN,
     userKeypair: anchor.web3.Keypair,
     isNativeBase: boolean = false,
-    isNativePc: boolean = false
+    isNativePc: boolean = false,
+    baseMintAddress: any = null,
+    pcMintAddress: any = null
   ) {
-    let baseMint;
-    let pcMint;
-    if (isNativeBase) {
+    let baseMint = baseMintAddress;
+    let pcMint = pcMintAddress;
+    if (isNativeBase && !baseMint && !pcMint) {
       baseMint = NATIVE_MINT;
       ({ pcMint } = await createBaseAndPCMint());
-    } else if (isNativePc) {
+    } else if (isNativePc && !baseMint && !pcMint) {
       pcMint = NATIVE_MINT;
       ({ baseMint } = await createBaseAndPCMint());
-    } else {
+    } else if (!baseMint && !pcMint) {
       ({ baseMint, pcMint } = await createBaseAndPCMint());
     }
 
@@ -244,6 +247,30 @@ describe("amm", () => {
 
     return associatedTokenAccount;
   }
+
+  async function exchangeBaseToPc(
+    inputBaseAmount: anchor.BN,
+    totalPoolBaseAmount: anchor.BN,
+    totalPoolPcAmount: anchor.BN
+  ) {
+    const maxPcAmount = inputBaseAmount
+      .mul(totalPoolPcAmount)
+      .div(totalPoolBaseAmount);
+
+    return maxPcAmount;
+  }
+
+  async function exchangePcToBase(
+    inputPcAmount: anchor.BN,
+    totalPoolBaseAmount: anchor.BN,
+    totalPoolPcAmount: anchor.BN
+  ) {
+    const maxBaseAmount = inputPcAmount
+      .mul(totalPoolBaseAmount)
+      .div(totalPoolPcAmount);
+
+    return maxBaseAmount;
+  }
   before(async () => {
     const airdropSig = await provider.connection.requestAirdrop(
       liquidityProvider.publicKey,
@@ -255,6 +282,11 @@ describe("amm", () => {
       anchor.web3.LAMPORTS_PER_SOL * 100
     );
     await provider.connection.confirmTransaction(airdropSigUser);
+    const airdropSigDepositor = await provider.connection.requestAirdrop(
+      depositor.publicKey,
+      anchor.web3.LAMPORTS_PER_SOL * 100
+    );
+    await provider.connection.confirmTransaction(airdropSigDepositor);
   });
   it("Initialize liquidity pool", async () => {
     const ammPdaIndex = new anchor.BN(1);
@@ -557,5 +589,115 @@ describe("amm", () => {
 
     console.log("Base:  ", userbaseTokenAccount.amount.toString());
     console.log("PC:  ", userpcTokenAccount.amount.toString());
+  });
+
+  it("Despoit into pool", async () => {
+    const ammPdaIndex = new anchor.BN(2);
+
+    const {
+      ammPda,
+      baseTokenVault,
+      pcTokenVault,
+
+      baseMint,
+      pcMint,
+    } = ammVariables[ammPdaIndex.toNumber()];
+    const {
+      lpTokenMint,
+      liquidityProviderLpTokenAta,
+      userPCTokenAta: liquidityProviderPCTokenAta,
+      userBaseTokenAta: liquidityProviderBaseTokenAta,
+
+      baseMintAmount,
+      pcMintAmount,
+    } = await prepareInitalizeLiquidityPool(
+      2_000_000_000,
+      1_000_000_000,
+      ammPdaIndex,
+      depositor,
+      true,
+      false,
+      baseMint,
+      pcMint
+    );
+
+    await wrapSol(depositor, liquidityProviderBaseTokenAta);
+
+    const userBaseInput = new anchor.BN(2_000_000_00);
+
+    let baseTokenVaultAccount = await getAccount(
+      provider.connection,
+      baseTokenVault
+    );
+    let pcTokenvaultAccount = await getAccount(
+      provider.connection,
+      pcTokenVault
+    );
+
+    const baseTokenVaultAmount = new anchor.BN(baseTokenVaultAccount.amount);
+    const pcTokenVaultAmount = new anchor.BN(pcTokenvaultAccount.amount);
+
+    const maxPcAmount = await exchangeBaseToPc(
+      userBaseInput,
+      baseTokenVaultAmount,
+      pcTokenVaultAmount
+    );
+    const base_side: number = 0;
+
+    const baseAta = await getAccount(
+      provider.connection,
+      liquidityProviderBaseTokenAta
+    );
+    const pcAta = await getAccount(
+      provider.connection,
+      liquidityProviderPCTokenAta
+    );
+
+    await program.methods
+      .deposit(
+        lpMintDecimal,
+        ammPdaIndex,
+        baseMint,
+        pcMint,
+        userBaseInput,
+        maxPcAmount,
+        base_side
+      )
+      .accounts({
+        user: depositor.publicKey,
+        ammPda: ammPda,
+        baseTokenVault: baseTokenVault,
+        pcTokenVault: pcTokenVault,
+        lpTokenMint: lpTokenMint,
+        baseTokenMint: baseMint,
+        pcTokenMint: pcMint,
+        liquidityProviderLpTokenAta: liquidityProviderLpTokenAta,
+        liquidityProviderBaseTokenAta: liquidityProviderBaseTokenAta,
+        liquidityProviderPcTokenAta: liquidityProviderPCTokenAta,
+      })
+      .signers([depositor])
+      .rpc();
+    let lpAta = await getAccount(
+      provider.connection,
+      liquidityProviderLpTokenAta
+    );
+    console.log(lpAta.amount.toString());
+    baseTokenVaultAccount = await getAccount(
+      provider.connection,
+      baseTokenVault
+    );
+
+    pcTokenvaultAccount = await getAccount(provider.connection, pcTokenVault);
+    const finalBaseTokenCountInVault = userBaseInput.add(baseTokenVaultAmount);
+    const finalPcTokenCountInVault = maxPcAmount.add(pcTokenVaultAmount);
+
+    assert.equal(
+      finalBaseTokenCountInVault.toString(),
+      baseTokenVaultAccount.amount.toString()
+    );
+    assert.equal(
+      finalPcTokenCountInVault.toString(),
+      pcTokenvaultAccount.amount.toString()
+    );
   });
 });

@@ -150,7 +150,23 @@ describe("amm", () => {
       userKeypair.publicKey.toBuffer(),
       ammPda.toBuffer(),
     ]);
-    ammVariables[ammPdaIndex.toNumber()] = {
+    if (!(ammPdaIndex.toNumber() in ammVariables)) {
+      ammVariables[ammPdaIndex.toNumber()] = {
+        ammPda,
+        baseTokenVault,
+        pcTokenVault,
+        lpTokenMint,
+        liquidityProviderLpTokenAta,
+        userPCTokenAta,
+        userBaseTokenAta,
+        baseMint,
+        pcMint,
+        baseMintAmount,
+        pcMintAmount,
+      };
+    }
+
+    return {
       ammPda,
       baseTokenVault,
       pcTokenVault,
@@ -163,7 +179,6 @@ describe("amm", () => {
       baseMintAmount,
       pcMintAmount,
     };
-    return ammVariables[ammPdaIndex.toNumber()];
   }
   async function prepareSwap(
     baseMintToAmount: number,
@@ -699,5 +714,54 @@ describe("amm", () => {
       finalPcTokenCountInVault.toString(),
       pcTokenvaultAccount.amount.toString()
     );
+  });
+
+  it("withdraw", async () => {
+    const ammPdaIndex = new anchor.BN(2);
+
+    const {
+      ammPda,
+      baseTokenVault,
+      pcTokenVault,
+      lpTokenMint,
+      liquidityProviderLpTokenAta,
+      userPCTokenAta,
+      userBaseTokenAta,
+      baseMint,
+      pcMint,
+      baseMintAmount,
+      pcMintAmount,
+    } = ammVariables[ammPdaIndex.toNumber()];
+    let lpAta = await getAccount(
+      provider.connection,
+      liquidityProviderLpTokenAta
+    );
+    console.log(lpAta.amount.toString());
+    const lpTokenAmount = lpAta.amount;
+
+    const maxLpAmount = new anchor.BN(lpTokenAmount)
+      .mul(new anchor.BN(50))
+      .div(new anchor.BN(100));
+    console.log(maxLpAmount.toString());
+    await program.methods
+      .withdraw(lpMintDecimal, ammPdaIndex, maxLpAmount)
+      .accounts({
+        user: liquidityProvider.publicKey,
+        ammPda: ammPda,
+        baseTokenVault: baseTokenVault,
+        pcTokenVault: pcTokenVault,
+        lpTokenMint: lpTokenMint,
+        liquidityProviderLpTokenAta: liquidityProviderLpTokenAta,
+        liquidityProviderBaseTokenAta: userBaseTokenAta,
+        liquidityProviderPcTokenAta: userPCTokenAta,
+        baseTokenMint: baseMint,
+        pcTokenMint: pcMint,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+      })
+      .signers([liquidityProvider])
+      .rpc();
+
+    lpAta = await getAccount(provider.connection, liquidityProviderLpTokenAta);
+    console.log(lpAta.amount.toString());
   });
 });

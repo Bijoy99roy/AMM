@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, burn, Burn, Mint, Token, TokenAccount, Transfer};
 
-use crate::{AMMError, InitalizeLiquidityAccount, TokenShareCalculator};
+use crate::{AMMError, InitalizeLiquidityAccount, TokenShareCalculator, WithdrawEvent};
 
 #[derive(Accounts)]
 #[instruction(_lp_token_mint_decimal: u8, amm_pda_index: u64)]
@@ -65,6 +65,7 @@ pub fn _withdraw(
     max_lp_token_amount: u64,
 ) -> Result<()> {
     let accounts = &ctx.accounts;
+    let user = &accounts.user;
     let amm_pda = &accounts.amm_pda;
     let liquidity_provider_lp_token_ata = &accounts.liquidity_provider_lp_token_ata;
     let lp_token_mint = &accounts.lp_token_mint;
@@ -146,5 +147,11 @@ pub fn _withdraw(
     );
     token::transfer(cpi_context, pc_token_share)?;
 
+    emit!(WithdrawEvent {
+        user: user.key(),
+        lp_amount: max_lp_token_amount,
+        base_token_amount: base_token_share,
+        pc_token_amount: pc_token_share
+    });
     Ok(())
 }

@@ -26,3 +26,11 @@ pub struct DepositEvent {
     pub base_token_amount: u64,
     pub pc_token_amount: u64,
 }
+
+#[event]
+pub struct WithdrawEvent {
+    pub user: Pubkey,
+    pub lp_amount: u64,
+    pub base_token_amount: u64,
+    pub pc_token_amount: u64,
+}

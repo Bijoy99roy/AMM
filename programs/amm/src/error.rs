@@ -34,4 +34,8 @@ pub enum AMMError {
     MintMismatch,
     #[msg("Insufficient funds")]
     InsufficientFund,
+    #[msg("Not enough token in supply")]
+    NotEnoughTokenSupply,
+    #[msg("Insufficient funds in pool")]
+    InsufficientPoolFund,
 }

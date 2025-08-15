@@ -68,6 +68,20 @@ pub mod amm {
             base_side,
         )
     }
+
+    pub fn withdraw(
+        ctx: Context<Withdraw>,
+        _lp_token_mint_decimal: u8,
+        amm_pda_index: u64,
+        max_lp_token_amount: u64,
+    ) -> Result<()> {
+        _withdraw(
+            ctx,
+            _lp_token_mint_decimal,
+            amm_pda_index,
+            max_lp_token_amount,
+        )
+    }
 }
 
 #[derive(Accounts)]

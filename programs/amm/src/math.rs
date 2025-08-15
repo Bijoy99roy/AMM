@@ -119,3 +119,23 @@ impl TokenCalculator {
         min(base_token_pool_share, pc_token_pool_share)
     }
 }
+
+pub struct TokenShareCalculator {
+    pub lp_token_input: u64,
+    pub lp_total_token: u64,
+}
+
+impl TokenShareCalculator {
+    pub fn exchange_pool_to_token(&self, total_pool_token: u64) -> u64 {
+        let token_share = Converter::to_u64(
+            Converter::to_u128(self.lp_token_input)
+                .unwrap()
+                .checked_mul(total_pool_token.into())
+                .unwrap()
+                .checked_div(self.lp_total_token.into())
+                .unwrap(),
+        )
+        .unwrap();
+        token_share
+    }
+}
